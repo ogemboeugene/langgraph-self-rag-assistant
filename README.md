@@ -27,6 +27,16 @@ Trusted by companies shaping the future of agents – including Klarna, Replit, 
 pip install -U langgraph
 ```
 
+## Research assistant fork highlight
+
+This fork adds a portfolio-focused research assistant release at `examples/rag/research_assistant/` while preserving upstream LangGraph attribution and history.
+
+- New modular implementation: `examples/rag/research_assistant/src/research_assistant/`
+- Focused docs and deterministic tests: `examples/rag/research_assistant/README.md`
+- Reproducible comparison script: `examples/rag/research_assistant/examples/compare_workflows.py`
+
+The original notebook at `examples/rag/langgraph_self_rag.ipynb` remains archival and unchanged.
+
 > [!TIP]
 > If you're looking to quickly build agents, check out **[Deep Agents](https://docs.langchain.com/oss/python/deepagents/overview)** — a higher-level package built on LangGraph for agents that can plan, use subagents, and leverage file systems for complex tasks.
 
