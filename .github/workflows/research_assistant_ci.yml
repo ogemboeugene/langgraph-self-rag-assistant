@@ -1,0 +1,38 @@
+name: Research Assistant CI
+
+on:
+  pull_request:
+    paths:
+      - "examples/rag/research_assistant/**"
+      - ".github/workflows/research_assistant_ci.yml"
+  push:
+    branches:
+      - "copilot/**"
+    paths:
+      - "examples/rag/research_assistant/**"
+      - ".github/workflows/research_assistant_ci.yml"
+
+jobs:
+  deterministic-checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/rag/research_assistant
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install langgraph and research assistant deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ../../../libs/langgraph
+          make install
+      - name: Format check
+        run: make format
+      - name: Lint
+        run: make lint
+      - name: Deterministic tests
+        run: make test
+      - name: Deterministic evaluation
+        run: python examples/compare_workflows.py
