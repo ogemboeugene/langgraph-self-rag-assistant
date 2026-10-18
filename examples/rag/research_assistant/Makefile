@@ -4,6 +4,7 @@ TEST ?= tests
 PYTHON ?= python
 
 install:
+	$(PYTHON) -m pip install -e ../../../libs/langgraph
 	$(PYTHON) -m pip install -e ".[dev]"
 
 format:

@@ -1,22 +1,38 @@
 # Research Assistant (Self-RAG evolution)
 
-This package provides a modular, testable first release of an original AI research assistant built alongside the archival notebook at `/examples/rag/langgraph_self_rag.ipynb`.
+This package provides a modular, testable research assistant built alongside the archival notebook at `examples/rag/langgraph_self_rag.ipynb`.
+
+The original notebook is preserved unchanged (blob SHA `23751308ce25e9dfe0d1e6e7aa8f10e2e007605f`).
 
 ## Purpose
 
 - Preserve the original notebook unchanged for historical reference.
-- Add a maintainable implementation with bounded retries, citation-aware claims, and deterministic offline tests.
-- Support future API and dashboard work through clear interfaces.
+- Provide a production-style example with explicit graph orchestration, bounded retries, citation validation, and deterministic offline tests.
+- Keep provider integration as an adapter injection boundary so tests stay provider-independent.
 
-## Architecture
+## Graph architecture
 
-- `src/research_assistant/config.py`: runtime limits from environment variables.
-- `src/research_assistant/models.py`: report, evidence, citation, status, and event models.
-- `src/research_assistant/retrieval.py`: retriever and query-rewriter protocols, stable evidence IDs.
-- `src/research_assistant/generation.py`: structured report parsing, citation checks, unsupported-claim checks.
-- `src/research_assistant/graph.py`: bounded retrieval, rewrite, generation, correction, and terminal outcomes.
-- `src/research_assistant/observability.py`: structured events plus usage/latency collection when metadata exists.
-- `src/research_assistant/evaluation.py`: deterministic baseline-vs-improved comparison helpers.
+The assistant orchestration uses an explicit LangGraph `StateGraph` with bounded looping and terminal statuses.
+
+```mermaid
+graph TD
+  A[validate input] -->|valid| B[retrieve evidence]
+  A -->|invalid| Z[terminate insufficient_evidence]
+  B --> C[assess evidence]
+  C -->|sufficient| D[draft report]
+  C -->|insufficient + rewrites left| E[rewrite query]
+  C -->|insufficient + retry limit| Z
+  E --> B
+  D --> F[validate citations and claims]
+  D -->|malformed structured output| G[correct report]
+  F -->|valid| H[terminate answered]
+  F -->|invalid + corrections left| G
+  F -->|correction limit| I[terminate citation_validation_failed]
+  G --> F
+  G -->|provider/model exception| J[terminate model_error]
+```
+
+A defensive `max_graph_steps` limit hard-stops execution with `retry_limit_exceeded`.
 
 ## Terminal statuses
 
@@ -26,10 +42,33 @@ This package provides a modular, testable first release of an original AI resear
 - `model_error`
 - `retry_limit_exceeded`
 
+## Retry and attempt accounting
+
+The run result tracks these counters separately:
+
+- `retrieval_attempts`
+- `query_rewrites`
+- `generation_attempts`
+- `correction_attempts`
+- `total_graph_steps`
+
+Terminal errors include explicit limit context, for example retrieval-attempt, correction-attempt, or graph-step limits.
+
+## Citation validation semantics
+
+Citation checks are deterministic and include:
+
+1. Citation ID existence against retrieved evidence IDs.
+2. Lexical claim-support checks against cited passages.
+3. Punctuation/case/simple token normalization before overlap scoring.
+4. Detailed issue output including claim ID, citation ID, reason, support score, and matched terms when available.
+
+> Lexical support is a deterministic heuristic for testing and guardrails. It is not semantic entailment.
+
 ## Setup
 
 ```bash
-cd /home/runner/work/langgraph-self-rag-assistant/langgraph-self-rag-assistant/examples/rag/research_assistant
+cd examples/rag/research_assistant
 make install
 ```
 
@@ -41,15 +80,11 @@ make install
 - `RESEARCH_ASSISTANT_MIN_EVIDENCE_CHUNKS`
 - `RESEARCH_ASSISTANT_MAX_RETRIEVED_CHUNKS`
 
-Provider-backed integrations should read credentials from environment variables only (for example, optional `OPENAI_API_KEY` in a custom adapter), and secrets must never be committed.
+Credentials are never committed. Provider-backed adapters should read credentials from environment variables.
 
-## Usage
+## Provider integration boundary
 
-```python
-from research_assistant import ResearchAssistant, RuntimeConfig
-```
-
-Inject retriever/generator implementations that satisfy the declared protocols and call `run(question)`.
+`examples/provider_openai_example.py` is intentionally a boundary example that prints integration guidance. It does not ship a working OpenAI adapter.
 
 ## Testing and quality checks
 
@@ -59,33 +94,34 @@ make lint
 make test
 ```
 
-The included tests are deterministic and offline.
+All included tests are deterministic and run offline without provider API keys.
 
-## Evaluation example
+## Deterministic evaluation fixture
 
-Run a reproducible deterministic comparison:
+A reproducible fixture is provided at `evaluation/deterministic_fixture.json`.
+
+Run measured deterministic evaluation:
 
 ```bash
 uv run python examples/compare_workflows.py
 ```
 
-The printed result is measured from local fake components. Any provider-backed run is illustrative and depends on external models and credentials.
+Reported deterministic metrics include:
 
-## Error handling included
+- answer status
+- citation validity
+- supported-claim rate
+- retrieval attempts
+- correction attempts
+- latency
 
-- Empty retrieval results.
-- Retriever exceptions.
-- Generator exceptions.
-- Malformed structured outputs.
-- Invalid citation IDs.
-- Unsupported claims.
-- Exhausted correction/retrieval retries.
+Provider-backed outputs are illustrative and not included in these measured metrics.
 
 ## Limitations
 
-- Claim support checking is lexical and intentionally simple for deterministic testing.
-- Provider adapters are intentionally out-of-scope for this first release and should be injected through protocols.
+- Claim support uses lexical overlap, not semantic entailment.
+- Real provider integrations must be injected via retriever/generator protocols.
 
 ## Attribution
 
-This work is inspired by the archival LangGraph Self-RAG notebook and the Self-RAG research direction. The original notebook remains unchanged and available at `/examples/rag/langgraph_self_rag.ipynb`.
+This project is inspired by the archival LangGraph Self-RAG notebook and the Self-RAG research direction. Upstream `langchain-ai/langgraph` core libraries are intentionally left unchanged.

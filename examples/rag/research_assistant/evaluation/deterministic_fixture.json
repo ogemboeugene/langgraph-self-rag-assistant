@@ -1,0 +1,22 @@
+{
+  "cases": [
+    {
+      "case_id": "case-answered",
+      "question": "What is LangGraph useful for?",
+      "expected_status": "answered",
+      "expected_min_retrieval_attempts": 1
+    },
+    {
+      "case_id": "case-rewrite",
+      "question": "Please rewrite question before answer",
+      "expected_status": "answered",
+      "expected_min_retrieval_attempts": 2
+    },
+    {
+      "case_id": "case-insufficient",
+      "question": "unknown question with no evidence",
+      "expected_status": "insufficient_evidence",
+      "expected_min_retrieval_attempts": 2
+    }
+  ]
+}

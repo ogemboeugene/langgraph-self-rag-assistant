@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import time
+import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 from .models import ExecutionEvent, UsageSnapshot
@@ -10,10 +12,33 @@ from .models import ExecutionEvent, UsageSnapshot
 
 @dataclass
 class EventLog:
+    run_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     events: list[ExecutionEvent] = field(default_factory=list)
 
-    def record(self, event_type: str, **details: Any) -> None:
-        self.events.append(ExecutionEvent(event_type=event_type, details=details))
+    def record(
+        self,
+        event_type: str,
+        stage: str,
+        status: str,
+        *,
+        attempt: int | None = None,
+        duration_ms: float | None = None,
+        error_type: str | None = None,
+        **details: Any,
+    ) -> None:
+        self.events.append(
+            ExecutionEvent(
+                run_id=self.run_id,
+                event_type=event_type,
+                stage=stage,
+                status=status,
+                timestamp=datetime.now(UTC).isoformat(),
+                duration_ms=duration_ms,
+                attempt=attempt,
+                error_type=error_type,
+                details=details,
+            )
+        )
 
 
 @dataclass
@@ -39,6 +64,12 @@ class Metrics:
                 latency_ms=_to_float(raw.get("latency_ms")),
             )
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "elapsed_ms": self.elapsed_ms,
+            "usage": [item.to_dict() for item in self.usage],
+        }
 
 
 def _to_int(value: Any) -> int | None:

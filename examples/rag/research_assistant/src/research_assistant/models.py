@@ -41,6 +41,17 @@ class CitationIssue:
     claim_id: str
     citation_id: str
     reason: str
+    support_score: float | None = None
+    matched_terms: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "claim_id": self.claim_id,
+            "citation_id": self.citation_id,
+            "reason": self.reason,
+            "support_score": self.support_score,
+            "matched_terms": list(self.matched_terms),
+        }
 
 
 @dataclass(frozen=True)
@@ -59,8 +70,39 @@ class UsageSnapshot:
     cost_usd: float | None = None
     latency_ms: float | None = None
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "provider": self.provider,
+            "model": self.model,
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "total_tokens": self.total_tokens,
+            "cost_usd": self.cost_usd,
+            "latency_ms": self.latency_ms,
+        }
+
 
 @dataclass(frozen=True)
 class ExecutionEvent:
+    run_id: str
     event_type: str
+    stage: str
+    status: str
+    timestamp: str
+    duration_ms: float | None = None
+    attempt: int | None = None
+    error_type: str | None = None
     details: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "run_id": self.run_id,
+            "event_type": self.event_type,
+            "stage": self.stage,
+            "status": self.status,
+            "timestamp": self.timestamp,
+            "duration_ms": self.duration_ms,
+            "attempt": self.attempt,
+            "error_type": self.error_type,
+            "details": dict(self.details),
+        }
